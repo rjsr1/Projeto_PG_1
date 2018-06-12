@@ -1,0 +1,279 @@
+		<!DOCTYPE html>
+		<html>
+		<body>
+
+
+		<p>Selecione Tipo de Parametrização</p>
+		<form>
+		  <select id="selectTipoParametrizacao" onchange="mudarParametrizacao()">
+		  <option value="Uniforme">Uniforme
+		  <option value="Corda">Tamanho de Corda  
+		</select>
+		  <input type="button" id="GoCurva" value="Desenhar Curva" onclick="draw()"/> 
+		  Quantidade de Avaliacoes :
+		  <input type="text" name="qntAvaliacoes" id="iDqntAvaliacoes" onchange="setarQntAvaliacoes()">  
+		  <input type="button" name="MostrarPoligonal" id="BtnMostrarPoligonal" value="Mostrar/Esconder Poligonal" onclick="togglePoligonal()">
+		  <input type="button" name="MostrarCurva" id="BtnMostrarCurva" value="Mostrar/Esconder Curva" onclick="toggleCurva()">
+		  <input type="button" name="MostrarPonstosControle" id="BtnMostrarPontosControle" value="Mostrar/Esconder Pontos Controle" onclick="togglePontosControle()">
+
+		</form>
+
+		
+
+
+		<canvas id="myCanvas" width="1200" height="600"
+		style="border:1px solid #c3c3c3;">
+		Your browser does not support the canvas element.
+		</canvas>
+
+
+		<script>
+		var canvas = document.getElementById("myCanvas");
+		var ctx = canvas.getContext("2d");
+		var controlPointsInsertedArray=[];
+		var controlPointsArray=[];
+		var point;
+
+		var mostrarCurva=true;
+		var mostrarPontosControle=true;
+		var mostrarPoligonal=true;
+
+		var qntAvaliacoes=10;
+		var qntPontoControle=0;
+		var qntCurvas=0;
+		var parametrosU=[];
+		canvas.addEventListener("click",addClickPoint,false);
+
+        function toggleCurva(){
+           mostrarCurva=!mostrarCurva;
+           draw();
+        }
+        function togglePontosControle(){
+           mostrarPontosControle=!mostrarPontosControle;
+           draw();
+        }
+        function togglePoligonal(){           
+           mostrarPoligonal=!mostrarPoligonal;
+           draw();
+        }
+		function clearCanvas(){			
+			ctx.clearRect(0,0,canvas.width,canvas.height);
+		}
+		function setarQntAvaliacoes(){
+			qntAvaliacoes=document.getElementById("iDqntAvaliacoes").value;
+			clearCanvas();
+			desenharCurva();
+		}
+		function mudarParametrizacao(){
+			var selected=document.getElementById("selectTipoParametrizacao").value;
+
+			if(selected=="Uniforme"){
+			   clearCanvas();
+			   setarUUniforme();
+			   draw();	      
+			}else if(selected=="Corda"){		       
+		       clearCanvas();
+		       setarUcomCordas();
+		       draw();
+			}
+		}
+
+        function desenharPoligonalControle(){
+
+        	for(var i=0;i<controlPointsArray.length-1;i++){
+        	ctx.beginPath();   
+        	ctx.strokeStyle='red';      
+		    ctx.moveTo(controlPointsArray[i].x,controlPointsArray[i].y);
+		    ctx.lineTo(controlPointsArray[i+1].x,controlPointsArray[i+1].y);
+		    ctx.stroke();
+		    ctx.fill();
+            }
+        }
+		function setarUcomCordas(){
+			parametrosU=[];
+			for(var index=0;index<controlPointsInsertedArray.length-1;index++){
+				var cordx=Math.pow(controlPointsInsertedArray[index+1].x-controlPointsInsertedArray[index].x,2);
+				var cordy=Math.pow(controlPointsInsertedArray[index+1].y-controlPointsInsertedArray[index].y,2);
+				var corda=Math.sqrt(cordx+cordy);
+		        if(index>0){
+		        	parametrosU[index] = parametrosU[index-1]+corda;
+		        }else{
+		        	parametrosU[index]=corda;
+		        }				
+			}
+		}
+
+	    function setarUUniforme(){
+	    	parametrosU=[];
+	    	qntPontoControle=controlPointsInsertedArray.length;
+		    qntCurvas=(qntPontoControle-2);
+	    	for(var i=0;i<qntCurvas+1;i++){
+				parametrosU.push(i);
+			}
+	    }
+        function desenharPontosControle(){
+        	for(var i=0;i<controlPointsArray.length;i++){
+        		drawControlPoint(controlPointsArray[i]);
+        	}
+        }
+	    function draw(){
+	    	clearCanvas();
+	    	var selected=document.getElementById("selectTipoParametrizacao").value;	    	
+			if(selected=="Uniforme"){
+			   setarUUniforme();
+			   	      
+			}else if(selected=="Corda"){ 
+		       setarUcomCordas();		       
+			}
+	    	if(mostrarCurva){
+	    		desenharCurva();
+	    	}
+	    	if(mostrarPontosControle){
+	    		desenharPontosControle();
+	    	}	    	
+	    	if(mostrarPoligonal){
+	    		desenharPoligonalControle();
+	    	}
+	    	
+	    }
+		function desenharCurva(){
+
+			qntPontoControle=controlPointsInsertedArray.length;
+		    qntCurvas=(qntPontoControle-2);
+			controlPointsArray=[];
+
+			console.log("parametrosU = "+parametrosU);
+		    controlPointsArray.push(controlPointsInsertedArray[0]);		    
+		    for (var i = 1; i <controlPointsInsertedArray.length-2; i++) {
+		    controlPointsArray.push(controlPointsInsertedArray[i]);		    
+		    var bPar=calcularBPar(controlPointsInsertedArray[i],controlPointsInsertedArray[i+1],i);
+		    console.log("bPar = "+ bPar);
+		    controlPointsArray.push(bPar);		    
+		} 
+            controlPointsArray.push(controlPointsInsertedArray[controlPointsInsertedArray.length-2]);
+		    controlPointsArray.push(controlPointsInsertedArray[controlPointsInsertedArray.length-1]);
+		    console.log("controlPointsArray = "+controlPointsArray);
+		    var i=0;
+		    var Uinicio=0;
+		    var Ufim=1;
+		    while( i < controlPointsArray.length-1) {
+		    	var p0=controlPointsArray[i];
+		    	var p1=controlPointsArray[i+1];
+		    	var p2=controlPointsArray[i+2];
+		    	console.log("linha 69 = "+" p1 : "+p1+"p2 :"+ p2+"p0:"+ p0);
+		    	drawBezierQuadraticCurve(p0,p1,p2,parametrosU[Uinicio],parametrosU[Ufim]);
+		    	i=i+2;
+		    	Uinicio++;
+		    	Ufim++;
+		    }
+
+
+		}
+
+		function calcularBPar(p1,p3,i){
+			var deltaUi=parametrosU[i+1]-parametrosU[i];	
+			var deltaUi_1=parametrosU[i]-parametrosU[i-1];
+			var p2x=(deltaUi/(deltaUi+deltaUi_1))*p1.x + ((deltaUi_1/(deltaUi+deltaUi_1))*p3.x);
+			var p2y=(deltaUi/(deltaUi+deltaUi_1))*p1.y + ((deltaUi_1/(deltaUi+deltaUi_1))*p3.y);
+			var p2={x:p2x,y:p2y};
+			return p2;
+		}
+		function adicionarControllPoints(){	    
+		    console.log(controlPointsInsertedArray);  
+		}
+
+		function addClickPoint(e){
+			    var offsetX = canvas.offsetLeft;
+		        var offsetY = canvas.offsetTop;
+		        var x=e.x-offsetX;
+		        var y=e.y-offsetY
+			    point={x:x,y:y};
+			console.log("pegamos um  ponto :"+point);
+			controlPointsInsertedArray.push(point);
+			drawControlPoint(point);
+		}
+		function drawControlPoint(point){
+		    ctx.beginPath();
+		    ctx.fillStyle="blue";
+			ctx.arc(point.x,point.y,2,0,2*Math.PI);
+			ctx.stroke();
+			ctx.fill();		
+			
+		}
+
+
+
+		function getArrayControllPoints(text){
+			var points=[];
+			var res=text.split(";");
+			var pontoComVirgula;
+			for(var i=0;i<res.length;i++){
+		        pontoComVirgula=res[i];
+		        pontoComVirgula=pontoComVirgula.replace("(","");
+		        pontoComVirgula=pontoComVirgula.replace(")","");
+		        var temp=pontoComVirgula.split(",");
+		        var ponto={x:temp[0],y:temp[1]};
+		        points.push(ponto);        
+		    }
+		    return points;
+		}
+
+		function drawBezierQuadraticCurve(p1,p2,p3,Uinicio,Ufim){
+
+		var qtdIncremento=(Ufim-Uinicio)/qntAvaliacoes;
+		console.log(qtdIncremento);
+		var u=Uinicio;
+		var t=0.0;
+		if(u>0){
+		 t=(u-Uinicio)/(Ufim-Uinicio);
+		}
+		console.log("p1 :"+p1);
+		console.log("p2:"+p2);
+		console.log("p3:"+p3)
+		var lastPointx=p1.x;
+		var lastPointy=p1.y;
+
+
+
+
+		function drawBezierPoint(t){		
+		        var x=(((1-t)*(1-t))*p1.x)+(2*(((1-t)*t)*p2.x))+((t*t)*p3.x);
+		        var y=(((1-t)*(1-t))*p1.y)+(2*(((1-t)*t)*p2.y))+((t*t)*p3.y);
+
+		        console.log("valor de x="+x);
+		        console.log("valor de y="+y);
+		        
+		        ctx.beginPath();  
+		        ctx.strokeStyle="black";       
+		        ctx.moveTo(lastPointx,lastPointy);
+		        ctx.lineTo(x,y);
+		        ctx.stroke();
+		        ctx.fill();
+		        
+		        lastPointx=x;
+		        lastPointy=y;   
+		        
+		        console.log("lastPointx = "+lastPointx);     
+		        console.log("lastPointy = "+lastPointy);
+		}
+
+		   
+		       do{
+
+		       if(t>1){
+		         break;
+		       }else{
+		       drawBezierPoint(t);
+		       u=u+qtdIncremento;
+		       temp=(u-Uinicio)/(Ufim-Uinicio);
+		       t=temp.toFixed(3);
+		       
+		       console.log("valor de t apos qtdIncremento = "+t);
+		       }	
+		       
+		}while(u<(Ufim+qtdIncremento));					
+	}
+		</script>
+		</body>
+		</html>
+
